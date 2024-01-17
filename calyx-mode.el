@@ -134,6 +134,34 @@
               :feature toplevel
               ((literal) @font-lock-builtin-face)))
 
+(defvar calyx-indent-level 2)
+
+(defvar calyx-indent-rules
+  `((calyx
+      ((query ((component "}" @query))) parent-bol 0)
+      ((parent-is "component") parent ,calyx-indent-level)
+
+      ;; cells
+      ((parent-is "cell_assignment") parent-bol ,calyx-indent-level)
+      ((node-is "cells_inner") parent ,calyx-indent-level)
+      ((query ((arg_list ")" @query))) parent-bol 0)
+      ((parent-is "arg_list") parent-bol ,calyx-indent-level)
+
+      ;; wires block
+      ((node-is "wires_inner") parent ,calyx-indent-level)
+
+      ;; groups
+      ((query ((group "}" @query))) parent-bol 0)
+      ((parent-is "group") parent ,calyx-indent-level)
+      ((parent-is "wire_assignment") parent-bol ,calyx-indent-level)
+      ((parent-is "switch") parent-bol ,calyx-indent-level)
+
+      ;; control block
+      ((node-is "control_inner") parent ,calyx-indent-level)
+      ((node-is "stmt") parent-bol ,calyx-indent-level)
+
+      (catch-all parent-bol 0))))
+
 (defun calyx-mode-setup ()
   "Setup treesit for calyx-mode"
 
@@ -149,10 +177,13 @@
                 ))
 
   ;; setup indentation
-  ;; (setq-local treesit-simple-indent-rules calyx-indent-rules)
+  (setq-local treesit--indent-verbose t)
+  (setq-local treesit-simple-indent-rules calyx-indent-rules)
 
-  (treesit-major-mode-setup)
-  )
+  (setq combobulate-rules-calyx '())
+  (setq combobulate-rules-calyx-inverted '())
+
+  (treesit-major-mode-setup))
 
 (defun calyx-mode-update-tree-sitter ()
   "Update the tree-sitter parser for Calyx."
@@ -163,10 +194,12 @@
     (calyx-mode-setup))
 
   (when (eq major-mode 'calyx-mode)
-    (treesit-parser-delete (car (treesit-parser-list)))
     (treesit-parser-create 'calyx)
     (calyx-mode-setup)
     (font-lock-update)))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.futil\\'" . calyx-mode))
 
 ;;;###autoload
 (define-derived-mode calyx-mode prog-mode "Calyx"
@@ -179,4 +212,4 @@
       (when (y-or-n-p "Install language grammar?")
         (calyx-mode-update-tree-sitter)))))
 
-
+(provide 'calyx-mode)
