@@ -138,29 +138,50 @@
 
 (defvar calyx-indent-rules
   `((calyx
-      ((query ((component "}" @query))) parent-bol 0)
-      ((parent-is "component") parent ,calyx-indent-level)
+     ((parent-is "source_file") column-0 0)
+     ((query ((component "}" @query))) parent-bol 0)
+     ((node-is "component") parent 0)
+     ((parent-is "component") parent ,calyx-indent-level)
 
-      ;; cells
-      ((parent-is "cell_assignment") parent-bol ,calyx-indent-level)
-      ((node-is "cells_inner") parent ,calyx-indent-level)
-      ((query ((arg_list ")" @query))) parent-bol 0)
-      ((parent-is "arg_list") parent-bol ,calyx-indent-level)
+     ;; cells
+     ((parent-is "cell_assignment") parent-bol ,calyx-indent-level)
+     ((node-is "cells_inner") parent ,calyx-indent-level)
+     ((parent-is "cells_inner") parent 0)
+     ((parent-is "cells") parent 0)
+     ((query ((arg_list ")" @query))) parent-bol 0)
+     ((parent-is "arg_list") parent-bol ,calyx-indent-level)
 
-      ;; wires block
-      ((node-is "wires_inner") parent ,calyx-indent-level)
+     ;; wires block
+     ((node-is "wires_inner") parent ,calyx-indent-level)
+     ((parent-is "wires_inner") parent 0)
+     ((parent-is "wires") parent 0)
 
-      ;; groups
-      ((query ((group "}" @query))) parent-bol 0)
-      ((parent-is "group") parent ,calyx-indent-level)
-      ((parent-is "wire_assignment") parent-bol ,calyx-indent-level)
-      ((parent-is "switch") parent-bol ,calyx-indent-level)
+     ;; groups
+     ((query ((group "}" @query))) parent-bol 0)
+     ((parent-is "group") parent ,calyx-indent-level)
+     ((parent-is "wire_assignment") parent-bol ,calyx-indent-level)
+     ((parent-is "switch") parent-bol ,calyx-indent-level)
 
-      ;; control block
-      ((node-is "control_inner") parent ,calyx-indent-level)
-      ((node-is "stmt") parent-bol ,calyx-indent-level)
+     ;; control block
+     ((node-is "control_inner") parent ,calyx-indent-level)
+     ((node-is "stmt") parent-bol ,calyx-indent-level)
+     ((parent-is "control") parent 0)
 
-      (catch-all parent-bol 0))))
+     ((query ((seq "}" @q))) parent 0)
+     ((parent-is "seq") parent-bol 2)
+
+     ((query ((par "}" @q))) parent 0)
+     ((parent-is "par") parent-bol 2)
+
+     ((query ((block "}" @q))) parent-bol 0)
+     ((parent-is "block") parent-bol 2)
+
+     (catch-all parent-bol ,calyx-indent-level))))
+
+(with-current-buffer (get-buffer "vectorized-add.futil")
+  (calyx-mode-setup)
+  (indent-region (point-min) (point-max))
+  )
 
 (defun calyx-mode-setup ()
   "Setup treesit for calyx-mode"
