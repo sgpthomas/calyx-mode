@@ -138,10 +138,18 @@
 
 (defvar calyx-indent-rules
   `((calyx
+     ((node-is "comment") no-indent 0)
+
      ((parent-is "source_file") column-0 0)
      ((query ((component "}" @query))) parent-bol 0)
      ((node-is "component") parent 0)
      ((parent-is "component") parent ,calyx-indent-level)
+
+     ((node-is "io_port_list") prev-sibling 0)
+     ((node-is "io_port") prev-sibling 0)
+     ((query ((io_port_list ")" @q))) column-0 0)
+     ((parent-is "io_port") parent ,calyx-indent-level)
+     ((parent-is "signature") parent 0)
 
      ;; cells
      ((parent-is "cell_assignment") parent-bol ,calyx-indent-level)
@@ -168,17 +176,21 @@
      ((parent-is "control") parent 0)
 
      ((query ((seq "}" @q))) parent 0)
-     ((parent-is "seq") parent-bol 2)
+     ((parent-is "seq") parent-bol ,calyx-indent-level)
 
      ((query ((par "}" @q))) parent 0)
-     ((parent-is "par") parent-bol 2)
+     ((parent-is "par") parent-bol ,calyx-indent-level)
 
      ((query ((block "}" @q))) parent-bol 0)
-     ((parent-is "block") parent-bol 2)
+     ((parent-is "block") parent-bol ,calyx-indent-level)
+
+     ((node-is "invoke_args") prev-sibling 0)
+     ((node-is "invoke_arg") prev-sibling 0)
+     ((parent-is "invoke_arg") parent ,calyx-indent-level)
 
      (catch-all parent-bol ,calyx-indent-level))))
 
-(with-current-buffer (get-buffer "vectorized-add.futil")
+(with-current-buffer (get-buffer "pass-in-register.futil")
   (calyx-mode-setup)
   (indent-region (point-min) (point-max))
   )
