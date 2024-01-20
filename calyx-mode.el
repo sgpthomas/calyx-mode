@@ -1,8 +1,16 @@
+;;; calyx-mode.el --- Major mode for editing Calyx files. -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2024 Samuel Thomas
+
+;; Author: Samuel Thomas <sgt@cs.utexas.edu>
+;; Package-Requires: (treesit dash s f xref)
+
 ;;; Code:
 (require 'treesit)
 (require 'dash)
 (require 's)
 (require 'f)
+(require 'xref)
 
 (defgroup calyx-mode-faces nil
   "Faces for highlighting Calyx code."
@@ -405,7 +413,7 @@
                     (calyx-mode-render-signature name
                                                  (calyx-mode-search-for-signature (calyx-mode-file-import-strings) name)))))))
 
-(defun calyx-mode-eldoc (callback &rest args)
+(defun calyx-mode-eldoc (callback &rest _args)
   (funcall callback (calyx-mode-cell-sig-at-point)))
 
 ;; Xref
@@ -456,16 +464,15 @@
               '((comment)
                 (keyword)
                 (toplevel)
-                (annotations)
-                ))
+                (annotations)))
 
   ;; setup indentation
-  (setq-local treesit--indent-verbose t)
+  ;; (setq-local treesit--indent-verbose t)
   (setq-local treesit-simple-indent-rules calyx-indent-rules)
 
   ;; so that we can use the combobulate query builder in calyx modes
-  (setq combobulate-rules-calyx '())
-  (setq combobulate-rules-calyx-inverted '())
+  (setq-local combobulate-rules-calyx '())
+  (setq-local combobulate-rules-calyx-inverted '())
 
   ;; setup imenu
   (setq-local treesit-simple-imenu-settings
@@ -482,7 +489,6 @@
   ;; eldoc
   (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
 
-  (treesit-inspect-mode)
   (treesit-major-mode-setup))
 
 (defun calyx-mode-reload ()
