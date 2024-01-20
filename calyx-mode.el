@@ -1,23 +1,31 @@
 ;;; Code:
 (require 'treesit)
 (require 'dash)
-
-(setq combobulate-rules-calyx-inverted '())
+(require 's)
+(require 'f)
 
 (defgroup calyx-mode-faces nil
   "Faces for highlighting Calyx code."
   :group 'calyx-mode)
 
-(defface calyx-mode-face-annotation
-  '((default :inherit font-lock-preprocessor-face
-             :slant italic
-             ))
-  "Todo"
+(defface calyx-mode-face-comment
+  '((default :inherit font-lock-comment-face))
+  "Doc"
   :group 'calyx-mode)
 
-(defface calyx-mode-face-cell-instantiation
-  '((default :inherit (link font-lock-function-name-face)
-             :underline nil))
+(defface calyx-mode-face-keyword
+  '((default :inherit font-lock-keyword-face))
+  "Doc"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-literal
+  '((default :inherit font-lock-builtin-face))
+  "Doc"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-annotation
+  '((default :inherit font-lock-preprocessor-face
+             :slant italic))
   "Todo"
   :group 'calyx-mode)
 
@@ -27,8 +35,40 @@
   "Todo"
   :group 'calyx-mode)
 
+(defface calyx-mode-face-param
+  '((default :inherit font-lock-variable-name-face))
+  "Todo"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-string
+  '((default :inherit font-lock-string-face))
+  "Todo"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-section
+  '((default :inherit font-lock-function-name-face))
+  "Todo"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-component-name
+  '((default :inherit font-lock-type-face))
+  "Todo"
+  :group 'calyx-mode)
+
 (defface calyx-mode-face-group-name
   '((default :inherit (font-lock-type-face)))
+  "Todo"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-group-hole
+  '((default :inherit (font-lock-variable-name-face)
+             :bold t))
+  "Todo"
+  :group 'calyx-mode)
+
+(defface calyx-mode-face-cell-instantiation
+  '((default :inherit (link font-lock-function-name-face)
+             :underline nil))
   "Todo"
   :group 'calyx-mode)
 
@@ -48,113 +88,134 @@
   "Todo"
   :group 'calyx-mode)
 
-(defface calyx-mode-face-hole
-  '((default :inherit (font-lock-variable-name-face)
-             :bold t))
-  "Todo"
-  :group 'calyx-mode)
-
 (defface calyx-mode-face-parse-error
   '((default :inherit flyspell-incorrect))
   "Todo"
   :group 'calyx-mode)
 
+(defvar calyx-mode-face-abbrevs
+  '((comment . @calyx-mode-face-comment)
+    (keyword . @calyx-mode-face-keyword)
+    (literal . @calyx-mode-face-literal)
+    (annotation . @calyx-mode-face-annotation)
+    (attribute . @calyx-mode-face-attribute)
+    (param . @calyx-mode-face-param)
+    (string . @calyx-mode-face-string)
+    (section . @calyx-mode-face-section)
+    (component . ((name . @calyx-mode-face-component-name)))
+    (group . ((name . @calyx-mode-face-group-name)
+              (hole . @calyx-mode-face-group-hole)))
+    (cell . ((instantiation . @calyx-mode-face-cell-instantiation)
+             (name . @calyx-mode-face-cell-name)
+             (use . @calyx-mode-face-cell-use)
+             (access . @calyx-mode-face-cell-access)))
+    (parse-error . @calyx-mode-face-parse-error)
+    )
+  )
+
 (defvar calyx-font-lock-rules
-  '(:language calyx
-              :override t
-              :feature comment
-              ((comment) @font-lock-comment-face)
+  (let-alist calyx-mode-face-abbrevs
+    `(:language calyx
+                :override t
+                :feature comment
+                ((comment) ,.comment)
 
-              :language calyx
-              :override t
-              :feature keyword
-              (["import" "component" "ref" "comb" "group" "static" "primitive"] @font-lock-keyword-face)
+                :language calyx
+                :override t
+                :feature keyword
+                (["import" "component" "ref" "comb" "group" "static" "primitive" "extern"] ,.keyword)
 
-              :language calyx
-              :override t
-              :feature keyword
-              (["invoke" "seq" "par" "if" "while" "repeat" "with"] @font-lock-keyword-face)
+                :language calyx
+                :override t
+                :feature keyword
+                (["invoke" "seq" "par" "if" "while" "repeat" "with"] ,.keyword)
 
-              :language calyx
-              :override t
-              :feature keyword
-              (["cells" "wires" "control"] @font-lock-function-name-face)
+                :language calyx
+                :override t
+                :feature keyword
+                (["cells" "wires" "control"] ,.section)
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((import (string) @font-lock-string-face))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((import (string) ,.string))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((component (ident) @font-lock-type-face))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((extern (string) ,.string))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((primitive (ident) @font-lock-type-face))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((component (ident) ,.component.name))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((at_attribute "@" @calyx-mode-face-annotation
-                             (ident) @calyx-mode-face-annotation))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((primitive (ident) ,.component.name
+                            (params (ident) ,.param)
+                            (signature (io_port_list (io_port (ident) (ident) ,.param)))))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((cell_assignment (ident) @calyx-mode-face-cell-name
-                                (instantiation (ident) @calyx-mode-face-cell-instantiation)))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((at_attribute "@" ,.annotation
+                               (ident) ,.annotation))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((attributes) @font-lock-string-face)
+                :language calyx
+                :override t
+                :feature toplevel
+                ((cell_assignment (ident) ,.cell.name
+                                  (instantiation (ident) ,.cell.instantiation)))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((attribute (string)) @calyx-mode-face-attribute)
+                :language calyx
+                :override t
+                :feature toplevel
+                ((attributes) ,.string)
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((group (ident) @calyx-mode-face-group-name))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((attribute (string)) ,.attribute)
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((port (ident) @calyx-mode-face-cell-use
-                     (ident) @calyx-mode-face-cell-access))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((group (ident) ,.group.name))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((hole (ident) @calyx-mode-face-group-name
-                     (ident) @calyx-mode-face-hole))
-              
-              ;; highest precedence
-              :language calyx
-              :override t
-              :feature toplevel
-              ((number) @font-lock-builtin-face)
+                :language calyx
+                :override t
+                :feature toplevel
+                ((port (ident) ,.cell.use
+                       (ident) ,.cell.access))
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((literal) @font-lock-builtin-face)
+                :language calyx
+                :override t
+                :feature toplevel
+                ((hole (ident) ,.group.name
+                       (ident) ,.group.hole))
+                
+                ;; highest precedence
+                :language calyx
+                :override t
+                :feature toplevel
+                ((number) ,.literal)
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((any_line) @font-lock-string-face)
+                :language calyx
+                :override t
+                :feature toplevel
+                ((literal) ,.literal)
 
-              :language calyx
-              :override t
-              :feature toplevel
-              ((ERROR) @calyx-mode-face-parse-error)
-              ))
+                :language calyx
+                :override t
+                :feature toplevel
+                ((any_line) ,.string)
+
+                :language calyx
+                :override t
+                :feature toplevel
+                ((ERROR) ,.parse-error))))
 
 (defvar calyx-indent-level 2)
 
@@ -168,6 +229,10 @@
      ((node-is "component") parent 0)
      ((parent-is "component") parent ,calyx-indent-level)
 
+     ((query ((extern "}" @q))) parent-bol 0)
+     ((node-is "extern") parent 0)
+     ((parent-is "extern") parent-bol ,calyx-indent-level)
+
      ;; primitive
      ((query ((primitive_blob "}" @q))) parent-bol 0)
      ((node-is "primitive") parent 0)
@@ -175,7 +240,7 @@
 
      ((node-is "io_port_list") prev-sibling 0)
      ((node-is "io_port") prev-sibling 0)
-     ((query ((io_port_list ")" @q))) column-0 0)
+     ((query ((io_port_list ")" @q))) parent-bol 0)
      ((parent-is "io_port") parent ,calyx-indent-level)
      ((parent-is "signature") parent 0)
 
@@ -232,29 +297,12 @@
           ("group" (concat "group " (treesit-node-text (treesit-node-next-sibling node))))
           (_ (treesit-node-text node)))))))
 
-;; Xref
-(defun calyx-mode-xref-backend () 'calyx)
-
-(cl-defstruct (calyx-xref-location
-               (:constructor calyx-xref-make-location (symbol file node)))
-  "doc"
-  symbol file node)
-
-(cl-defmethod xref-location-marker ((l calyx-xref-location))
-  (save-excursion
-    (goto-char (treesit-node-start (calyx-xref-location-node l)))
-    (point-marker)))
-
-(cl-defmethod xref-location-group ((l calyx-xref-location))
-  (calyx-xref-location-file l))
-
-(cl-defmethod xref-backend-identifier-at-point ((_backend (eql 'calyx)))
-  (-let* (((beg . end) (bounds-of-thing-at-point 'symbol))
-          (node (treesit-node-at beg)))
-    (if (equal (treesit-node-type node) "ident")
-        (propertize (treesit-node-text node)
-                    'calyx-ts-node node)
-      nil)))
+;; analysis functions
+(defun calyx-mode-ts-node-at-point ()
+  (interactive)
+  (-if-let* (((beg . end) (bounds-of-thing-at-point 'symbol))
+             (node (treesit-node-at beg)))
+    node))
 
 (defun calyx-mode-find-parent (node parent)
   (if (equal (treesit-node-type node) parent)
@@ -278,26 +326,123 @@
              (nodes (treesit-query-capture enclosing query)))
       (--map (cons (treesit-node-text (cdr it)) (cdr it)) nodes)))
 
-(defun calyx-mode-make-location-list (lst ident)
-  (--map (xref-make "" (calyx-xref-make-location (car it) "" (cdr it)))
-         (--filter (equal ident (car it)) lst)))
+(defun calyx-mode-make-location-list (lst)
+  (--map (xref-make "" (calyx-xref-make-location (car it) "" (cdr it))) lst))
 
 (defun calyx-mode-ident-type (node)
   (cond
    ((calyx-mode-has-parent-p node "invoke") 'cell)
-   ((calyx-mode-has-parent-p node "port") 'cell)
+   ;; we only want the left hand side ident of a port
+   ;; making sure that we have a next sibling ensures this
+   ((and (calyx-mode-has-parent-p node "port")
+         (treesit-node-next-sibling node))
+    'cell)
    ((calyx-mode-has-parent-p node "hole") 'group)
    ((calyx-mode-has-parent-p node "enable") 'group)
    ((calyx-mode-has-parent-p node "port_with") 'group)
    ((calyx-mode-has-parent-p node "instantiation") 'component)
    (t nil)))
 
-(cl-defmethod xref-backend-definitions ((_backend (eql 'calyx)) identifier)
-  (let* ((node (get-text-property 0 'calyx-ts-node identifier))
+;; eldoc integration
+(defun calyx-mode-component-signature (comp-node)
+  (let-alist (treesit-query-capture comp-node
+                                    '((component (ident) @name (signature) @sig)
+                                      (primitive (ident) @name (signature) @sig)))
+    (cons (treesit-node-text .name) .sig)))
+
+(defun calyx-mode-gather-signatures ()
+  (--map (calyx-mode-component-signature (cdr it))
+         (treesit-query-capture (treesit-buffer-root-node)
+                                '((component) @comp
+                                  (primitive) @prim))))
+
+(defun calyx-mode-resolve-import-path (path)
+  (cond
+   ((file-exists-p path) path)
+   ((file-exists-p (f-join "~" ".calyx" path)) (f-join "~" ".calyx" path))
+   (t nil)))
+
+(defun calyx-mode-search-for-signature (imports cell-name)
+  (-when-let (path (car imports))
+    (-when-let (path (calyx-mode-resolve-import-path path))
+      (with-current-buffer (find-file-noselect path)
+        (-if-let* ((sig (calyx-mode-gather-signatures))
+                   (match-sig (assoc cell-name sig)))
+            (cdr match-sig)
+          (calyx-mode-search-for-signature (append (calyx-mode-file-import-strings) (cdr imports))
+                                           cell-name))))))
+
+(defun calyx-mode-render-signature (name sig)
+  (when sig
+    (concat name (s-join "" (-map #'s-trim (s-lines (treesit-node-text sig)))))))
+
+(defun calyx-mode-file-import-strings ()
+  (let* ((raw-imports (treesit-query-capture (treesit-buffer-root-node)
+                                             '((import (string) @q))))
+         (file-imports (--map (substring (treesit-node-text (cdr it)) 1 -1)
+                              raw-imports)))
+    file-imports))
+
+(defun calyx-mode-cell-sig-at-point ()
+  (when-let (node (calyx-mode-ts-node-at-point))
+    (pcase (calyx-mode-ident-type node)
+      ('cell (-let* ((name (treesit-node-text node))
+                     (cells (calyx-mode-find-objs node 'cell))
+                     ((_ . instance-node) (--find (equal (car it) name) cells))
+                     (cell-name (treesit-node-text
+                                 (cdar (treesit-query-capture (treesit-node-parent instance-node)
+                                                              '((instantiation (ident) @q))))))
+                     (local-sig (calyx-mode-gather-signatures)))
+               
+               (-if-let (match-sig (assoc cell-name local-sig))
+                   (calyx-mode-render-signature cell-name (cdr match-sig))
+                 (calyx-mode-render-signature cell-name
+                                              (calyx-mode-search-for-signature (calyx-mode-file-import-strings) cell-name)))))
+      ('component (-if-let* ((name (treesit-node-text node))
+                             (local-sig (calyx-mode-gather-signatures))
+                             (match-sig (assoc name local-sig)))
+                      (calyx-mode-render-signature name (cdr match-sig))
+                    (calyx-mode-render-signature name
+                                                 (calyx-mode-search-for-signature (calyx-mode-file-import-strings) name)))))))
+
+(defun calyx-mode-eldoc (callback &rest args)
+  (funcall callback (calyx-mode-cell-sig-at-point)))
+
+;; Xref
+(defun calyx-mode-xref-backend () 'calyx)
+
+(cl-defstruct (calyx-xref-location
+               (:constructor calyx-xref-make-location (symbol file node)))
+  "doc"
+  symbol file node)
+
+(cl-defmethod xref-location-marker ((l calyx-xref-location))
+  (let ((node (calyx-xref-location-node l)))
+    (with-current-buffer (treesit-node-buffer node)
+      (save-excursion
+        (goto-char (treesit-node-start node))
+        (point-marker)))))
+
+(cl-defmethod xref-location-group ((l calyx-xref-location))
+  (calyx-xref-location-file l))
+
+(cl-defmethod xref-backend-identifier-at-point ((_backend (eql 'calyx)))
+  (let ((node (calyx-mode-ts-node-at-point)))
+    (if (equal (treesit-node-type node) "ident")
+        (propertize (treesit-node-text node)
+                    'calyx-ts-node node)
+      nil)))
+
+(cl-defmethod xref-backend-definitions ((_backend (eql 'calyx)) ident)
+  (let* ((node (get-text-property 0 'calyx-ts-node ident))
          (type (calyx-mode-ident-type node)))
-    (calyx-mode-make-location-list
-     (calyx-mode-find-objs node type)
-     identifier)))
+    (if-let (objs (--filter (equal ident (car it)) (calyx-mode-find-objs node type)))
+        (calyx-mode-make-location-list objs)
+      (progn
+        (when-let* ((sig (calyx-mode-search-for-signature (calyx-mode-file-import-strings) ident))
+                    (node (cdar (treesit-query-capture (treesit-node-parent sig)
+                                                       '((primitive (ident) @q))))))
+          (calyx-mode-make-location-list `((,ident . ,node))))))))
 
 (defun calyx-mode-setup ()
   "Setup treesit for calyx-mode"
@@ -334,7 +479,16 @@
   (when (featurep 'evil)
     (setq-local evil-goto-definition-functions '(evil-goto-definition-xref)))
 
+  ;; eldoc
+  (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
+
+  (treesit-inspect-mode)
   (treesit-major-mode-setup))
+
+(defun calyx-mode-reload ()
+  (interactive)
+  (fundamental-mode)
+  (calyx-mode))
 
 (defun calyx-mode-update-tree-sitter ()
   "Update the tree-sitter parser for Calyx."
