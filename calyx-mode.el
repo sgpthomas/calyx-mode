@@ -500,7 +500,8 @@
   "Update the tree-sitter parser for Calyx."
   (interactive)
 
-  (let ((treesit-language-source-alist '((calyx "https://github.com/sgpthomas/tree-sitter-calyx.git"))))
+  (let ((treesit-language-source-alist
+         '((calyx "https://github.com/calyxir/tree-sitter-calyx.git"))))
     (treesit-install-language-grammar 'calyx)
     (calyx-mode-setup))
 
