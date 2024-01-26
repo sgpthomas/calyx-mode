@@ -1,1 +1,96 @@
 * An Emacs Mode for Calyx using Tree-Sitter
+
+** Installation
+
+Adding the lisp to your load path should be enough to install this. This mode relies heavily on tree-sitter to do everything, so you need a version of Emacs 29+ with tree-sitter enabled. [[https://www.masteringemacs.org/article/how-to-get-started-tree-sitter][Here]] are instructions.
+
+It's convenient to use =use-package= and either =straight.el= or =elpaca= to install the mode.
+
+#+begin_src emacs-lisp
+(use-package calyx-mode
+  :elpaca (calyx-mode :host github :repo "sgpthomas/calyx-mode"))
+#+end_src
+
+If the grammar isn't detected, the mode will ask you to install it when you enable =calyx-mode=.
+
+** Implementation Details
+
+For those interested, here are some details on how this works. For syntax highlighting, indentation, and imenu support, my implementation follows the excellenet guide in Mastering Emacs: https://www.masteringemacs.org/article/lets-write-a-treesitter-major-mode
+
+Most of the setup happens in the =calyx-mode-setup= function.
+
+*** Highlighting
+
+The local variable =treesit-font-lock-settings= controls how emacs uses =treesit= to highlight syntax. You defined a series of [[https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries][queries]] that capture specific nodes and map them to faces. I've separated out the definitions into a separate variable named =calyx-font-lock-rules=, so that they are possible to customize if so desired.
+
+Here's an example query:
+
+#+begin_src emacs-lisp
+(:language calyx
+ :override t
+ :feature toplevel
+ ((cell_assignment (ident) @calyx-mode-face-cell-name
+                   (instantiation (ident) @calyx-mode-face-cell-instantiation))))
+#+end_src
+
+The first three keywords define the treesit grammar to use, whether this form should override other highlighting on these nodes, and a symbol name that let's users configure whether they want this rule to apply.
+
+This query is slightly complicated. It captures two separate identifiers inside of a =cell_assignment= and maps them to separate faces. I chose this example, because it shows how you can highlight the same AST node (=ident= in this case) differently depending on the context.
+
+The =@...= is the way that you "capture" nodes in treesit queries.
+
+*Note:* In my implementation I use the magic =let-alist= macro to create more convenient names to use in the queries. So I use the =,.cell.name= instead of prefixing the names with =@= directly.
+
+*** Indentation
+
+Indentation is more complicated, but uses essentially the same mechanism as =highlighting=. The major difference is that you sometimes can't use queries to describe what you want. For example, you often want to indent something based on a node's parent, rather then it's children. Emacs provides various functions to help with this. The ones that I've used are: =parent-is=, =node-is=, and =query=. The =parent-is= function matches nodes whose immediate parent is a particular node. =node-is= matches a node directly, and =query= uses normal tree-sitter queries.
+
+You then specify an indentation relative to a particular anchor. For example:
+
+#+begin_src emacs-lisp
+((parent-is "extern") parent-bol 2)
+#+end_src
+
+This rule matches nodes whose immediate parent is an =extern= and indents them by =2= with respect to the parents beginning-of-line (=parent-bol=).
+
+The other anchors that I've used are =parent=, and =prev-sibling=. =parent= anchors to the indentation of the parent node, rather than the beginning of the line that the parent node is on. =prev-sibling= is similar.
+
+*** Imenu
+
+The =calyx-mode-imenu= variable controls how imenu entries are generated. The API for this is a little strange, but not too complicated. You have to provide two functions, the first one is a predicate over nodes that chooses what nodes should be used for imenu entries. The second function, takes in a selected node and turns it into a string.
+
+*** Eldoc Integration
+
+Now we get into the more complicated things. Eldoc is an emacs mechanism for providing information for whatever is underneath the pointer.
+
+I add an entry point into the Eldoc system by adding the =calyx-mode-eldoc= function into the =eldoc-documentation-functions=. I don't use any of the eldoc async features, so this function just calls =calyx-mode-cell-sig-at-point= which is where the hard work happens.
+
+The basic flow here is this:
+1) Determine whether the point is on a =cell= or a =component= name. I determine this in the =calyx-mode-ident-type= function by finding where in the AST a particular identifier is located.
+   - *Component:* I gather all components in the enclosing file, and find a component with a matching name. If none exists, I perform a depth first walk over the imports, reading all components defined in those files until I find a match.
+   - *Cell:* I walk up the AST to the enclosing component, find the names of all the cells, find the component that cell comes from, and then search for the component definition in the same way as above.
+2) Once I have the tree-sitter node for the matching component, it's a simple matter of getting the signature out of the AST and printing it.
+
+ *Inefficiencies:* I walk over the AST and imported files if necessary for every single request. Some caching here would make this faster. However, it seems to be fast enough for the size of projects that I've tried with.
+
+*** Xref Integration
+
+Xref is the Emacs mechanism for supporting jump to definition and gathering references to a particular object (not yet supported). In principle, this works very similarly to the Eldoc integration. However, hooking into the Xref system is very different, and took me a while to figure out.
+
+Similarly to Eldoc, you add a backend by hooking into =xref-backend-functions=. For Calyx, the function I add is =calyx-mode-xref-backend=. However, instead of this function actually doing anything, it just declares a symbol  
+the becomes the name of the backend. You add functionality by implementing various methods with:
+
+#+begin_src emacs-lisp
+(cl-defmethod xref-xxxxxx ((_backend (eql 'calyx)) _args)
+  <method body>)
+#+end_src
+
+Note the =(eql 'calyx)= form.
+
+The first relevant method is =xref-backend-identifier-at-point=. This method isn't called with any arguments, and is responsible for returning the text of the identifier at point, or =nil= otherwise. The only way to pass information onto later stages of this pipeline is to add text-properties to the string you return. This is a very Emacs API and pretty terrible. But I guess it works. I add the tree-sitter node for the identifier to the text I return so that we can use it later.
+
+The next relevant method is =xref-backend-definitions= which is passed the propertized text returned from the previous method. This function needs to return a structure, representing a location you could jump to, and implementing two methods: =xref-location-marker= and =xref-location-group=. The first of these takes in the location structure and returns an emacs marker to the position it represents. The group function returns a string representing the "group" that a location belongs too. It usually makes sense to use the file of the location as the group.
+
+For Calyx, the relevant structure is called =calyx-xref-location= which stores the tree-sitter node of an identifier. The node has enough information to construct a marker.
+
+The actual backbone of the implementation uses the same mechanism as =Eldoc= to find the right place to jump from an identifier.

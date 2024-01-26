@@ -3,7 +3,7 @@
 ;; Copyright (C) 2024 Samuel Thomas
 
 ;; Author: Samuel Thomas <sgt@cs.utexas.edu>
-;; Package-Requires: (treesit dash s f xref)
+;; Package-Requires: (dash s f xref)
 
 ;;; Code:
 (require 'treesit)
@@ -18,87 +18,87 @@
 
 (defface calyx-mode-face-comment
   '((default :inherit font-lock-comment-face))
-  "Doc"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-keyword
   '((default :inherit font-lock-keyword-face))
-  "Doc"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-literal
   '((default :inherit font-lock-builtin-face))
-  "Doc"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-annotation
   '((default :inherit font-lock-preprocessor-face
              :slant italic))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-attribute
   '((default :inherit (font-lock-string-face)
              :slant italic))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-param
   '((default :inherit font-lock-variable-name-face))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-string
   '((default :inherit font-lock-string-face))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-section
   '((default :inherit font-lock-function-name-face))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-component-name
   '((default :inherit font-lock-type-face))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-group-name
   '((default :inherit (font-lock-type-face)))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-group-hole
   '((default :inherit (font-lock-variable-name-face)
              :bold t))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-cell-instantiation
   '((default :inherit (link font-lock-function-name-face)
              :underline nil))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-cell-name
   '((default))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-cell-use
   '((default))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-cell-access
   '((default :inherit (font-lock-variable-name-face)
              :slant italic))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defface calyx-mode-face-parse-error
   '((default :inherit flyspell-incorrect))
-  "Todo"
+  ""
   :group 'calyx-mode)
 
 (defvar calyx-mode-face-abbrevs
@@ -117,9 +117,9 @@
              (name . @calyx-mode-face-cell-name)
              (use . @calyx-mode-face-cell-use)
              (access . @calyx-mode-face-cell-access)))
-    (parse-error . @calyx-mode-face-parse-error)
-    )
-  )
+    (parse-error . @calyx-mode-face-parse-error))
+  "A mapping from short names to the full Calyx face name.
+Makes it easier to write the font-lock rules.")
 
 (defvar calyx-font-lock-rules
   (let-alist calyx-mode-face-abbrevs
@@ -223,7 +223,9 @@
                 :language calyx
                 :override t
                 :feature toplevel
-                ((ERROR) ,.parse-error))))
+                ((ERROR) ,.parse-error)))
+  "Calyx tree-sitter highlighting queries.
+This uses tree-sitter queries to map AST nodes to the faces used to highlight them.")
 
 (defvar calyx-indent-level 2)
 
@@ -480,14 +482,14 @@
                        `(,name ,node-fn nil ,name-fn))
                      calyx-mode-imenu))
 
+  ;; eldoc
+  (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
+
   ;; setup xref
   (add-hook 'xref-backend-functions #'calyx-mode-xref-backend nil t)
   ;; only use xref for goto definition
   (when (featurep 'evil)
     (setq-local evil-goto-definition-functions '(evil-goto-definition-xref)))
-
-  ;; eldoc
-  (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
 
   (treesit-major-mode-setup))
 
