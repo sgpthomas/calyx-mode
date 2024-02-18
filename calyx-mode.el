@@ -473,8 +473,8 @@ This uses tree-sitter queries to map AST nodes to the faces used to highlight th
   (setq-local treesit-simple-indent-rules calyx-indent-rules)
 
   ;; so that we can use the combobulate query builder in calyx modes
-  (setq-local combobulate-rules-calyx '())
-  (setq-local combobulate-rules-calyx-inverted '())
+  (setq-default combobulate-rules-calyx '())
+  (setq-default combobulate-rules-calyx-inverted '())
 
   ;; setup imenu
   (setq-local treesit-simple-imenu-settings
@@ -482,14 +482,21 @@ This uses tree-sitter queries to map AST nodes to the faces used to highlight th
                        `(,name ,node-fn nil ,name-fn))
                      calyx-mode-imenu))
 
-  ;; eldoc
-  (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
+  ;; ;; eldoc
+  ;; (add-hook 'eldoc-documentation-functions #'calyx-mode-eldoc nil t)
 
-  ;; setup xref
-  (add-hook 'xref-backend-functions #'calyx-mode-xref-backend nil t)
-  ;; only use xref for goto definition
-  (when (featurep 'evil)
-    (setq-local evil-goto-definition-functions '(evil-goto-definition-xref)))
+  ;; ;; setup xref
+  ;; (add-hook 'xref-backend-functions #'calyx-mode-xref-backend nil t)
+  ;; ;; only use xref for goto definition
+  ;; (when (featurep 'evil)
+  ;;   (setq-local evil-goto-definition-functions '(evil-goto-definition-xref)))
+
+  ;; add language server
+  (with-eval-after-load 'eglot
+    (setq-local eglot-server-programs
+                '((calyx-mode . ("calyx-lsp"))))
+    (setq-default eglot-workspace-configuration
+                  '(:calyxLsp (:libraryPaths ["/Users/sgt/Research/calyx"]))))
 
   (treesit-major-mode-setup))
 
