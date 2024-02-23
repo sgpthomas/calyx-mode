@@ -510,7 +510,7 @@ This uses tree-sitter queries to map AST nodes to the faces used to highlight th
   (interactive)
 
   (let ((treesit-language-source-alist
-         '((calyx "https://github.com/calyxir/tree-sitter-calyx.git"))))
+         '((calyx . ("https://github.com/calyxir/calyx.git" "calyx-lsp" "calyx-lsp/tree-sitter-calyx/src")))))
     (treesit-install-language-grammar 'calyx)
     (calyx-mode-setup))
 
