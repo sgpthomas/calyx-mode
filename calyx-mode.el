@@ -494,9 +494,7 @@ This uses tree-sitter queries to map AST nodes to the faces used to highlight th
   ;; add language server
   (with-eval-after-load 'eglot
     (setq-local eglot-server-programs
-                '((calyx-mode . ("calyx-lsp"))))
-    (setq-default eglot-workspace-configuration
-                  '(:calyxLsp (:libraryPaths ["/Users/sgt/Research/calyx"]))))
+                '((calyx-mode . ("calyx-lsp")))))
 
   (treesit-major-mode-setup))
 
@@ -510,7 +508,7 @@ This uses tree-sitter queries to map AST nodes to the faces used to highlight th
   (interactive)
 
   (let ((treesit-language-source-alist
-         '((calyx . ("https://github.com/calyxir/calyx.git" "calyx-lsp" "calyx-lsp/tree-sitter-calyx/src")))))
+         '((calyx . ("https://github.com/calyxir/calyx.git" "main" "calyx-lsp/tree-sitter-calyx/src")))))
     (treesit-install-language-grammar 'calyx)
     (calyx-mode-setup))
 
